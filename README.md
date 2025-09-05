@@ -13,8 +13,8 @@ This generator creates random polynomial functions for benchmarking and testing 
 
 ## 📦 Installation
 
+Clone the repo, then:
 ```bash
-git clone <repository-url>
 cd polynomial-generator
 poetry install
 ```

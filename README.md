@@ -1,6 +1,6 @@
 # Random Polynomial Generator
 
-A Python implementation of the random polynomial instance generation algorithm from Section 2.4 of the R1CS circuit optimization paper. This tool generates multivariate polynomials with a specified baseline difficulty parameter δ that corresponds to the number of R1CS constraints needed for naive polynomial evaluation.
+A Python implementation of a random polynomial instance generation algorithm. This tool generates multivariate polynomials with a specified baseline difficulty parameter δ that corresponds to the number of R1CS constraints needed for naive polynomial evaluation.
 
 ## 🎯 Purpose
 

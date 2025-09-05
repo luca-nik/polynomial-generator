@@ -44,6 +44,7 @@ def choose_m_n(delta: int, seed: Optional[int] = None) -> Tuple[int, int]:
     
     # Choose n: at least 2, capped to avoid explosion  
     max_n = min(delta, m + 3, 10)
+    max_n = max(max_n, 2)  # Ensure max_n >= 2 so we can choose n >= 2
     n = random.randint(2, max_n)
     
     return m, n

@@ -60,48 +60,6 @@ Baseline Kbase(P): 15
 ✓ Baseline matches target δ = 15
 ```
 
-### Programmatic Interface
-
-```python
-from polynomial_generator import generate_random_instance
-
-# Generate polynomial with difficulty δ=20
-result = generate_random_instance(delta=20, seed=42)
-
-# Access results
-print(f"Polynomial: {result['polynomial']}")
-print(f"Baseline: {result['baseline']}")  
-print(f"Matrix shape: {result['matrix'].shape}")
-print(f"Exponent matrix K:\n{result['matrix']}")
-print(f"Coefficients: {result['coefficients']}")
-
-# Result dictionary contains:
-# - delta: input difficulty parameter
-# - m: number of monomials (chosen automatically)
-# - n: number of variables (chosen automatically)
-# - matrix: exponent matrix K (numpy array)
-# - coefficients: list of nonzero coefficients
-# - polynomial: SymPy symbolic expression  
-# - baseline: computed Kbase(P) (equals input delta)
-```
-
-### Advanced Usage
-
-```python
-# Custom coefficient range
-result = generate_random_instance(
-    delta=30, 
-    coeff_range=(-100, 100),
-    seed=123
-)
-
-# Size selection analysis
-from polynomial_generator import choose_m_n
-for i in range(10):
-    m, n = choose_m_n(delta=25, seed=i)
-    print(f"Seed {i}: m={m}, n={n}")
-```
-
 ## 🧮 Algorithm
 
 The implementation follows Section 2.4 of the paper:

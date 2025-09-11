@@ -86,36 +86,6 @@ The implementation follows Section 2.4 of the paper:
 
 **Key Property**: The resulting polynomial has baseline constraint count `Kbase(P) = ∑(Eᵢ - 1) = δ`
 
-## 📐 Polynomial Instance Generation
-
-We generate random polynomial instances parameterized by a target baseline difficulty `δ`.
-Each instance is represented by a coefficient vector `c ∈ F^m` and an exponent matrix
-`K ∈ Z_{≥0}^{m×n}`, defining:
-
-`P(x) = \sum_{i=1}^{m} c_i \prod_{j=1}^{n} x_j^{k_{j,i}}`.
-
-To choose the number of monomials `m` and variables `n`, we use:
-
-- `m = ⌊α · δ⌋`, `n = ⌊√δ / β⌋`, with `α ~ U(0.6, 1.5)` and `β ~ U(0.2, 0.8)`.
-- √δ scaling keeps growth sublinear so circuits remain tractable at large δ.
-- `α` controls density: larger `α` → more monomials (denser polynomials).
-- `β` controls width/depth tradeoff: smaller `β` → more variables with shallow exponents (wide), larger `β` → fewer variables with higher exponents (deep).
-
-This creates natural diversity in structure while keeping instances of the same δ comparable.
-
-### Protocol for Calibrating α and β
-
-We use a calibration loop with a state-of-the-art compiler (e.g., Noir) to ensure fairness:
-
-1. Fix δ (baseline difficulty).
-2. Sample candidate values of `α`, `β` in their ranges.
-3. Generate many random polynomials using these `α`, `β`.
-4. Compile each polynomial with Noir to obtain actual compiled constraint count `K_compiled`.
-5. Measure variance of `K_compiled` across instances.
-6. Tune `α`, `β` ranges so that, for fixed δ, the distribution of compiled constraint counts has low variance (i.e., “fair hardness” regardless of instance shape).
-7. Lock parameters once distributions stabilize.
-
-This protocol aims to guarantee that for any fixed δ, a randomly chosen instance is consistently “equally hard” for a modern compiler, even if its internal structure differs (wide vs deep).
 
 ## 📊 Output Formats
 
@@ -159,3 +129,17 @@ poetry run pytest tests/test_cli.py
 # Run with coverage
 poetry run pytest --cov=polynomial_generator
 ```
+
+## Protocol for Calibrating α and β ranges
+
+We use a calibration loop with a state-of-the-art compiler (e.g., Noir) to ensure fairness:
+
+1. Fix δ (baseline difficulty).
+2. Sample candidate values of `α`, `β` in their ranges.
+3. Generate many random polynomials using these `α`, `β`.
+4. Compile each polynomial with Noir to obtain actual compiled constraint count `K_compiled`.
+5. Measure variance of `K_compiled` across instances.
+6. Tune `α`, `β` ranges so that, for fixed δ, the distribution of compiled constraint counts has low variance (i.e., “fair hardness” regardless of instance shape).
+7. Lock parameters once distributions stabilize.
+
+This protocol aims to guarantee that for any fixed δ, a randomly chosen instance is consistently “equally hard” for a modern compiler, even if its internal structure differs (wide vs deep).

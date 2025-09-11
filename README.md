@@ -130,16 +130,115 @@ poetry run pytest tests/test_cli.py
 poetry run pytest --cov=polynomial_generator
 ```
 
-## Protocol for Calibrating α and β ranges
+## ⚙️ Pipeline: From Polynomial to R1CS
 
-We use a calibration loop with a state-of-the-art compiler (e.g., Noir) to ensure fairness:
+We provide a reproducible pipeline to go from a randomly generated polynomial instance to a compiled R1CS circuit using Noir.
 
-1. Fix δ (baseline difficulty).
-2. Sample candidate values of `α`, `β` in their ranges.
-3. Generate many random polynomials using these `α`, `β`.
-4. Compile each polynomial with Noir to obtain actual compiled constraint count `K_compiled`.
-5. Measure variance of `K_compiled` across instances.
-6. Tune `α`, `β` ranges so that, for fixed δ, the distribution of compiled constraint counts has low variance (i.e., “fair hardness” regardless of instance shape).
-7. Lock parameters once distributions stabilize.
+### Steps
 
-This protocol aims to guarantee that for any fixed δ, a randomly chosen instance is consistently “equally hard” for a modern compiler, even if its internal structure differs (wide vs deep).
+### 1. Generate polynomial instance
+   Use `choose_m_n(delta)` and the generator to obtain:
+   - Exponent matrix `K ∈ Z^{m×n}` (exponents of variables in each monomial)
+   - Coefficient vector `c ∈ F^m` (coefficients for each monomial)
+
+   ```python
+   K = [[k11, k12, ..., k1n],
+        ...
+        [km1, km2, ..., kmn]]  # m × n exponents
+
+   c = [c1, c2, ..., cm]  # coefficients
+  ```
+
+### 2. Translate to Noir program
+   Convert `(K, c)` into a Noir circuit that evaluates
+
+   $$
+   P(x) = \sum_i c_i \prod_j x_j^{k_{j,i}}
+   $$
+
+   and enforces `assert(y == P(x))`.
+
+   Example generator function:
+
+   ```python
+   def generate_noir_code(K, c):
+       m, n = len(K), len(K[0])
+
+       code = """fn pow(base: Field, exp: u32) -> Field {
+           let mut res = 1;
+           let mut b = base;
+           let mut e = exp;
+           while e > 0 {
+               if e % 2 == 1 { res *= b; }
+               b *= b;
+               e /= 2;
+           }
+           res
+       }\n\n"""
+
+       code += f"fn evaluate_poly(xs: [Field; {n}]) -> Field {{\n"
+       code += "    let mut acc = 0;\n"
+       for i in range(m):
+           term = f"{c[i]}"
+           for j in range(n):
+               exp = K[i][j]
+               if exp > 0:
+                   term += f" * pow(xs[{j}], {exp}u32)"
+           code += f"    acc += {term};\n"
+       code += "    acc\n}\n\n"
+
+       code += f"fn main(xs: [Field; {n}], claimed_output: Field) {{\n"
+       code += "    let y = evaluate_poly(xs);\n"
+       code += "    assert(y == claimed_output);\n"
+       code += "}\n"
+       return code
+   ```
+
+### 3. Compile Noir → R1CS
+   Write the generated Noir code to `src/main.nr` inside a Noir project and compile:
+
+   ```bash
+   nargo compile --format r1cs
+   ```
+
+   This produces an R1CS JSON file (matrices `A, B, C`) inside `target/`.
+
+### 4. Analyze compiled difficulty
+   Parse the R1CS JSON to extract the actual number of constraints (`K_compiled`) and compare against δ.
+
+---
+
+## 🎛️ Tuning α and β
+
+To ensure fairness across instances, we calibrate the randomization parameters (α, β) so that instances of the same δ are consistently hard for a state-of-the-art compiler (Noir).
+
+### Calibration Protocol
+
+1. **Fix δ** (target difficulty).
+2. **Sample many pairs** `(α, β)` from the current ranges.
+3. **Generate polynomials** using `(α, β)` and compile them with Noir to obtain `K_compiled`.
+4. **Measure variance** of `K_compiled` across instances.
+5. **Adjust ranges** `[α_min, α_max]`, `[β_min, β_max]` until variance is low and the distribution of difficulties is stable.
+6. **Lock the ranges** once convergence is achieved.
+
+### Example Pseudocode
+
+```python
+def tune_alpha_beta(delta: int, trials: int):
+    results = []
+    for t in range(trials):
+        alpha = random.uniform(0.6, 1.5)
+        beta = random.uniform(0.2, 0.8)
+        K, c = generate_polynomial(delta, alpha, beta)
+        noir_code = generate_noir_code(K, c)
+        write_noir(noir_code)
+        run("nargo compile --format r1cs")
+        K_compiled = parse_r1cs("target/circuit.json")
+        results.append(K_compiled)
+
+    mu = statistics.mean(results)
+    sigma2 = statistics.variance(results)
+    return mu, sigma2
+```
+
+

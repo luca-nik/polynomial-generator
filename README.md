@@ -46,14 +46,14 @@ POLYNOMIAL GENERATION RESULTS
 Chosen (m, n): (3, 4)
 
 Exponent matrix K (3×4):
-  [2  1  0  3]
-  [1  2  1  0]  
-  [0  1  1  2]
+  [2  4  3  1]
+  [0  1  0  1]
+  [1  4  0  1]
 
-Coefficients: [5, -3, 7]
+Coefficients: [-2.854255875884597, 0.8337578690493785, 8.901163674075413]
 
 Symbolic polynomial:
-P(x) = 5*x1**2*x2*x4**3 - 3*x1*x2**2*x3 + 7*x2*x3*x4**2
+P(x) = -2.8542558758846*x1**2*x2**4*x3**3*x4 + 8.90116367407541*x1*x2**4*x4 + 0.833757869049379*x2*x4
 
 Verification:
 Baseline Kbase(P): 15

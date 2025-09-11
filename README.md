@@ -69,7 +69,7 @@ The implementation follows Section 2.4 of the paper:
    - Set `m = max(1, ⌊α·√δ⌋)` (controls density)
    - Set `n = max(2, ⌊√δ / β⌋)` (keeps growth sublinear)
    - The optional `seed` parameter makes these choices reproducible.
-   - `validate_m_n` checks feasibility under `∑Eᵢ = δ + m` with `Eᵢ ≥ 1`.
+   - `validate_m_n` checks feasibility under `∑Kij = ∑Eᵢ = δ + m` with `Eᵢ ≥ 1`.
 
 2. **Set row totals**: Sample positive integers `(E₁, ..., Eₘ)` where:
    - Each `Eᵢ ≥ 1` (minimum monomial degree)  

@@ -66,7 +66,7 @@ The implementation follows Section 2.4 of the paper:
 
 1. **Choose sizes (m, n)**: We use a randomized heuristic parameterized by δ:
    - Sample `α ~ Uniform(0.6, 1.5)` and `β ~ Uniform(0.2, 0.8)`
-   - Set `m = max(1, ⌊α·δ⌋)` (controls density)
+   - Set `m = max(1, ⌊α·√δ⌋)` (controls density)
    - Set `n = max(2, ⌊√δ / β⌋)` (keeps growth sublinear)
    - The optional `seed` parameter makes these choices reproducible.
    - `validate_m_n` checks feasibility under `∑Eᵢ = δ + m` with `Eᵢ ≥ 1`.

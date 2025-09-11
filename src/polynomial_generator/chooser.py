@@ -13,40 +13,33 @@ from typing import Tuple, Optional
 def choose_m_n(delta: int, seed: Optional[int] = None) -> Tuple[int, int]:
     """
     Choose number of monomials (m) and variables (n) given difficulty δ.
-    
+
     Args:
         delta: Difficulty parameter (target baseline constraint count)
         seed: Random seed for reproducibility
-    
+
     Returns:
         (m, n) tuple where:
-        - m = number of monomials  
-        - n = number of variables
-    
-    Rules:
-        - m ∈ [1, min(δ, ⌊√δ⌋ + 5)]
-        - n ∈ [2, min(δ, m+3, 10)]
-        
-    Note:
-        Same δ may give different (m, n) due to randomization.
-        This function is replaceable for different size selection strategies.
+        - m = number of monomials (≈ δ * α)
+        - n = number of variables (≈ sqrt(δ) / β)
+
+    Notes:
+        - α, β ∈ [0.2, 0.8] chosen uniformly at random
+        - n is sublinear in δ, avoiding explosion
+        - m is linear in δ, controlling average monomial degree
     """
     if delta <= 0:
         raise ValueError(f"Delta must be positive, got {delta}")
-    
-    # Set random seed if provided
+
     if seed is not None:
         random.seed(seed)
-    
-    # Choose m: at least 1, at most δ, random in growing range
-    max_m = min(delta, int(math.sqrt(delta)) + 5)
-    m = random.randint(1, max_m)
-    
-    # Choose n: at least 2, capped to avoid explosion  
-    max_n = min(delta, m + 3, 10)
-    max_n = max(max_n, 2)  # Ensure max_n >= 2 so we can choose n >= 2
-    n = random.randint(2, max_n)
-    
+
+    alpha = random.uniform(0.2, 0.8)
+    beta = random.uniform(0.2, 0.8)
+
+    m = max(1, int(delta * alpha))
+    n = max(2, int(math.sqrt(delta) / beta))
+
     return m, n
 
 

@@ -13,7 +13,7 @@ from .chooser import choose_m_n
 
 def generate_random_instance(
     delta: int, 
-    coeff_range: Tuple[int, int] = (-10, 10),
+    coeff_range: Tuple[float, float] = (-10, 10),
     seed: Optional[int] = None
 ) -> Dict:
     """
@@ -70,7 +70,7 @@ def generate_random_instance(
     for _ in range(m):
         coeff = 0
         while coeff == 0:  # Ensure nonzero coefficients
-            coeff = random.randint(coeff_range[0], coeff_range[1])
+            coeff = random.uniform(coeff_range[0], coeff_range[1])
         coefficients.append(coeff)
     
     # Step 5: Create symbolic polynomial using SymPy

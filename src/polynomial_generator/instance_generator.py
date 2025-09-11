@@ -65,6 +65,11 @@ def generate_random_instance(
     for i, total_degree in enumerate(row_totals):
         exponent_matrix[i] = _distribute_exponents(total_degree, n)
     
+    # Enforce matrix properties:
+    # - No identical rows
+    # - No columns with all zeros
+    exponent_matrix = _enforce_matrix_constraints(exponent_matrix)
+    
     # Step 4: Generate random nonzero coefficients
     coefficients = []
     for _ in range(m):
@@ -197,3 +202,189 @@ def _calculate_baseline(exponent_matrix: np.ndarray) -> int:
     """
     row_degrees = np.sum(exponent_matrix, axis=1)  # Eᵢ for each monomial
     return sum(max(0, degree - 1) for degree in row_degrees)
+
+
+def _enforce_matrix_constraints(exponent_matrix: np.ndarray) -> np.ndarray:
+    """
+    Post-process the exponent matrix to ensure:
+    - No duplicate rows
+    - No columns are entirely zero
+
+    The adjustments preserve each row's total degree, so the baseline δ remains
+    unchanged. The procedure preferentially adds mass to under-covered columns
+    when breaking duplicates and when fixing zero-columns.
+
+    Args:
+        exponent_matrix: m×n nonnegative integer matrix
+
+    Returns:
+        Adjusted matrix meeting the constraints.
+    """
+    if exponent_matrix.size == 0:
+        return exponent_matrix
+
+    m, n = exponent_matrix.shape
+    matrix = exponent_matrix.copy()
+
+    # Helper to move one unit from column p -> q in a given row (in-place on row)
+    def _move_unit(row: np.ndarray, p: int, q: int) -> None:
+        if p == q:
+            return
+        if row[p] <= 0:
+            return
+        row[p] -= 1
+        row[q] += 1
+
+    # Track counts of row patterns to check uniqueness efficiently
+    from collections import Counter
+    seen = Counter(tuple(row.tolist()) for row in matrix)
+
+    # Break duplicate rows by shifting one unit towards least-covered columns
+    col_sums = matrix.sum(axis=0).astype(int)
+    for i in range(m):
+        row = matrix[i]
+        key = tuple(row.tolist())
+        if seen[key] <= 1:
+            continue  # already unique
+
+        # Try multiple perturbations to reach a unique row, favor columns with low coverage
+        attempts = 0
+        made_unique = False
+        while attempts < 100 and not made_unique:
+            # Choose a target column to increase: zero columns first, else least-covered
+            zero_cols = np.where(col_sums == 0)[0]
+            if len(zero_cols) > 0:
+                q = int(zero_cols[attempts % len(zero_cols)])
+            else:
+                q = int(np.argmin(col_sums))
+
+            # Choose a donor column with positive mass, not equal to q
+            donors = [p for p in np.where(row > 0)[0].tolist() if p != q]
+            if not donors:
+                break
+            p = donors[0]
+
+            # Propose move
+            cand = row.copy()
+            _move_unit(cand, p, q)
+            cand_key = tuple(cand.tolist())
+            if seen[cand_key] == 0:
+                # Apply move and update bookkeeping
+                matrix[i] = cand
+                seen[key] -= 1
+                if seen[key] == 0:
+                    del seen[key]
+                seen[cand_key] += 1
+                col_sums[p] -= 1
+                col_sums[q] += 1
+                key = cand_key
+                row = cand
+                made_unique = True
+                break
+
+            attempts += 1
+
+        if not made_unique:
+            # Exhaustive deterministic search over single-unit moves
+            found = False
+            for p in range(n):
+                if row[p] == 0:
+                    continue
+                for q in range(n):
+                    if q == p:
+                        continue
+                    cand = row.copy()
+                    _move_unit(cand, p, q)
+                    cand_key = tuple(cand.tolist())
+                    if seen[cand_key] == 0:
+                        matrix[i] = cand
+                        seen[key] -= 1
+                        if seen[key] == 0:
+                            del seen[key]
+                        seen[cand_key] += 1
+                        col_sums[p] -= 1
+                        col_sums[q] += 1
+                        key = cand_key
+                        row = cand
+                        found = True
+                        break
+                if found:
+                    break
+            # If still not found, leave as-is (uniqueness may be impossible in edge cases)
+
+    # Ensure no column is entirely zero by redistributing within rows
+    col_sums = matrix.sum(axis=0).astype(int)
+    zero_columns = np.where(col_sums == 0)[0].tolist()
+    if zero_columns:
+        # Recompute seen to reflect current matrix
+        seen = Counter(tuple(row.tolist()) for row in matrix)
+
+    for j in zero_columns:
+        fixed = False
+        # Try to shift from rows with available mass, avoiding duplicates
+        for i in range(m):
+            row = matrix[i]
+            donors = [p for p in np.where(row > 0)[0].tolist() if p != j]
+            # Try donors in descending amount to reduce risk of zeroing
+            donors.sort(key=lambda p: row[p], reverse=True)
+            for p in donors:
+                cand = row.copy()
+                cand[p] -= 1
+                cand[j] += 1
+                old_key = tuple(row.tolist())
+                new_key = tuple(cand.tolist())
+                if seen[new_key] == 0:
+                    matrix[i] = cand
+                    seen[old_key] -= 1
+                    if seen[old_key] == 0:
+                        del seen[old_key]
+                    seen[new_key] += 1
+                    col_sums[p] -= 1
+                    col_sums[j] += 1
+                    fixed = True
+                    break
+            if fixed:
+                break
+        # If we couldn't avoid duplicates, perform the move anyway then try to re-break duplicates
+        if not fixed:
+            for i in range(m):
+                row = matrix[i]
+                donors = [p for p in np.where(row > 0)[0].tolist() if p != j]
+                if not donors:
+                    continue
+                p = donors[0]
+                old_key = tuple(row.tolist())
+                row[p] -= 1
+                row[j] += 1
+                new_key = tuple(row.tolist())
+                seen[old_key] -= 1
+                if seen[old_key] == 0:
+                    del seen[old_key]
+                seen[new_key] += 1
+                col_sums[p] -= 1
+                col_sums[j] += 1
+                matrix[i] = row
+                # Attempt to break any duplicate created for this row with a secondary move
+                if seen[new_key] > 1:
+                    # Move from the largest donor to the least-covered non-j column
+                    donors2 = [p2 for p2 in np.where(row > 0)[0].tolist() if p2 != j]
+                    if donors2:
+                        q2_candidates = [q for q in range(n) if q != j]
+                        # pick least covered among candidates
+                        q2 = min(q2_candidates, key=lambda q: col_sums[q]) if q2_candidates else None
+                        if q2 is not None and donors2:
+                            p2 = donors2[0]
+                            cand2 = row.copy()
+                            _move_unit(cand2, p2, q2)
+                            k2 = tuple(cand2.tolist())
+                            if seen[k2] == 0:
+                                matrix[i] = cand2
+                                seen[new_key] -= 1
+                                if seen[new_key] == 0:
+                                    del seen[new_key]
+                                seen[k2] += 1
+                                col_sums[p2] -= 1
+                                col_sums[q2] += 1
+                break  # proceed to next zero column
+
+    return matrix

@@ -64,9 +64,12 @@ Baseline Kbase(P): 15
 
 The implementation follows Section 2.4 of the paper:
 
-1. **Choose sizes**: Automatically select number of monomials `m` and variables `n` based on δ
-   - `m ∈ [1, min(δ, ⌊√δ⌋ + 5)]`
-   - `n ∈ [2, min(δ, m+3, 10)]`
+1. **Choose sizes (m, n)**: We use a randomized heuristic implemented in `chooser.py` that scales with δ:
+   - Sample `α ~ Uniform(0.2, 0.8)` and `β ~ Uniform(0.2, 0.8)`
+   - Set `m = max(1, ⌊α·δ⌋)`  (monomials scale roughly linearly with δ)
+   - Set `n = max(2, ⌊√δ / β⌋)` (variables grow sublinearly to avoid explosion)
+   - The optional `seed` parameter makes these choices reproducible.
+   - A lightweight validator (`validate_m_n`) checks feasibility: we require `n ≥ 2` and distribute a total degree of `δ + m` with each row having degree at least 1, which is feasible for `δ ≥ 0`.
 
 2. **Set row totals**: Sample positive integers `(E₁, ..., Eₘ)` where:
    - Each `Eᵢ ≥ 1` (minimum monomial degree)  

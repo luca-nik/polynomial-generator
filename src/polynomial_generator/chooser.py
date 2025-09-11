@@ -34,10 +34,10 @@ def choose_m_n(delta: int, seed: Optional[int] = None) -> Tuple[int, int]:
     if seed is not None:
         random.seed(seed)
 
-    alpha = random.uniform(0.2, 0.8)
+    alpha = random.uniform(0.6, 1.5)
     beta = random.uniform(0.2, 0.8)
 
-    m = max(1, int(delta * alpha))
+    m = max(1, int(math.sqrt(delta) * alpha))
     n = max(2, int(math.sqrt(delta) / beta))
 
     return m, n
